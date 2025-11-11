@@ -1,0 +1,17 @@
+asttokens==2.4.1
+click==8.1.7
+datasets==2.16.1
+fastapi==0.110.0
+gitpython==3.1.43
+jsonlines==4.0.0
+pandas==2.2.2
+pydantic==2.6.4
+python-dotenv==1.0.1
+requests==2.31.0
+rich==13.7.1
+textual==0.53.1
+torch==2.2.2
+transformers==4.39.2
+uvicorn==0.29.0
+unidiff==0.7.5
+flake8==7.0.0

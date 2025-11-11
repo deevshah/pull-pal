@@ -1,0 +1,41 @@
+name: Pull Pal Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Generate and post Pull Pal review comments
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.number }}
+          PULL_PAL_ENDPOINT: ${{ secrets.PULL_PAL_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          SAFE_OWNER=${OWNER// /-}
+          SAFE_OWNER=${SAFE_OWNER//\//_}
+          SAFE_REPO=${REPO// /-}
+          SAFE_REPO=${SAFE_REPO//\//_}
+          SLUG="${SAFE_OWNER}_${SAFE_REPO}"
+          BASE_DIR="data/raw/${SLUG}/pr_${PR_NUMBER}"
+          python scripts/fetch_pr.py --owner "$OWNER" --repo "$REPO" --pr "$PR_NUMBER"
+          python scripts/fetch_comments.py --owner "$OWNER" --repo "$REPO" --pr "$PR_NUMBER"
+          python scripts/diff_parser.py "${BASE_DIR}/diff.patch"
+          python scripts/add_context.py --summary "${BASE_DIR}/diff_summary.json" --metadata "${BASE_DIR}/metadata.json"
+          python scripts/merge_lints.py --diff "${BASE_DIR}/diff_full.json" --repo-dir "${BASE_DIR}/repo"
+          python scripts/build_examples.py --diff "${BASE_DIR}/diff_with_lint.json" --ctx "${BASE_DIR}/diff_with_ctx.json" --comments "${BASE_DIR}/pull_comments.json"
+          python scripts/publish_reviews.py --owner "$OWNER" --repo "$REPO" --pr "$PR_NUMBER" --examples "${BASE_DIR}/examples.jsonl" --metadata "${BASE_DIR}/metadata.json" --endpoint "${PULL_PAL_ENDPOINT}"
